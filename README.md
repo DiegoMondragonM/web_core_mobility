@@ -15,6 +15,16 @@ El front se edita en `src/App.jsx`, `src/Stage.jsx`, `src/StudyContent.jsx` y `s
 
 ## Datos y API
 
+### Apuntes por tema
+
+Cada tarjeta tiene un botón independiente **Mis apuntes**. El modal incluye botones de formato Markdown, editor y vista previa. Al cerrar o cambiar de tema con cambios pendientes permite guardar, descartar o continuar editando. Si la petición falla, conserva el borrador. Al salir o recargar la página con un borrador, el navegador pide confirmación.
+
+El campo opcional `apuntes` admite hasta 20 000 puntos de código Unicode; los registros antiguos se muestran con apuntes vacíos, sin migrar ni reescribir datos al leer. El editor guarda únicamente `{ "apuntes": "..." }` mediante `PATCH /api/temas/:id`. Una cadena vacía borra los apuntes. Express admite cuerpos JSON de 256 KiB, incluyendo el caso de Unicode escapado. Se mantienen `DATA_FILE` y la cola de escritura.
+
+La vista previa usa [react-markdown](https://github.com/remarkjs/react-markdown), con HTML incrustado deshabilitado y su filtro de URLs seguro. Los enlaces abren otra pestaña con `noopener noreferrer`; no se renderizan imágenes externas. Los apuntes se comparten entre navegadores que acceden a esta instalación, igual que el progreso existente; no hay separación por cuentas.
+
+Las pruebas de la API usan archivos temporales y cubren registros antiguos, límites, Unicode, actualización y vaciado. La actualización del servidor se realiza con los comandos de la siguiente sección, sin cambios en nginx ni copia del JSON inicial sobre los datos persistentes.
+
 La interfaz muestra una etapa a la vez, primero ROUTE y después ATP, ordenadas por `orden` dentro de cada grupo. Los controles Anterior/Siguiente y el total de etapas se calculan con los datos cargados. El avance total incluye todos los temas. Las notas y descripciones se conservan en el JSON aunque no se muestran en las tarjetas. El diseño usa todo el ancho y organiza los temas en columnas adaptables.
 
 ## Actualizar el servidor existente (Ubuntu)

@@ -23,9 +23,10 @@ function createApp(dataFile = process.env.DATA_FILE || path.join(__dirname, 'dat
   function validate(body, partial = false) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw fail(400, 'Objeto JSON requerido.');
     const keys = Object.keys(body);
-    if (!keys.length || keys.some(key => !['titulo', 'grupo', 'hecho', 'descripcion', 'etapa', 'orden', 'nota', 'mono'].includes(key))) throw fail(400, 'Hay campos vacíos o desconocidos.');
+    if (!keys.length || keys.some(key => !['titulo', 'grupo', 'hecho', 'descripcion', 'etapa', 'orden', 'nota', 'mono', 'apuntes'].includes(key))) throw fail(400, 'Hay campos vacíos o desconocidos.');
     if ((!partial || 'titulo' in body) && (typeof body.titulo !== 'string' || !body.titulo.trim() || body.titulo.trim().length > 200)) throw fail(400, 'El título debe tener entre 1 y 200 caracteres.');
     if ((!partial || 'grupo' in body) && !['ROUTE', 'ATP'].includes(body.grupo)) throw fail(400, 'El grupo debe ser ROUTE o ATP.');
+    if ('apuntes' in body && (typeof body.apuntes !== 'string' || Array.from(body.apuntes).length > 20000)) throw fail(400, 'Los apuntes deben ser texto de hasta 20 000 caracteres.');
     if ('hecho' in body && typeof body.hecho !== 'boolean') throw fail(400, 'hecho debe ser booleano.');
     for (const key of ['descripcion', 'etapa', 'nota']) {
       if (key in body && (typeof body[key] !== 'string' || body[key].length > 2000)) throw fail(400, `${key} debe ser texto de hasta 2000 caracteres.`);
@@ -35,7 +36,7 @@ function createApp(dataFile = process.env.DATA_FILE || path.join(__dirname, 'dat
     return { ...body, ...('titulo' in body ? { titulo: body.titulo.trim() } : {}) };
   }
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '16kb' }));
+  app.use(express.json({ limit: '256kb' }));
   app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   app.get('/api/temas', async (req, res) => {
     await queue;

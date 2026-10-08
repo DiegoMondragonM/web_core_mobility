@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import Stage from './Stage';
+import NotesEditor from './NotesEditor';
 import { Header, StudyGoal, NetworkMap, Reflexes } from './StudyContent';
 
 function groupStages(temas) {
@@ -24,6 +25,8 @@ const stageKey = stage => JSON.stringify([stage.grupo, stage.etapa]);
 
 export default function App() {
   const [temas, setTemas] = useState([]);
+  const [notesId, setNotesId] = useState(null);
+  const notesTema = temas.find(tema => tema.id === notesId);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -123,7 +126,7 @@ export default function App() {
       <section className="stage-view" ref={stageContent} tabIndex={-1} aria-label="Etapa actual">
         <div className="sec-head"><h2>La ruta, etapa por etapa</h2></div>
         {activeStage?.grupo === 'ATP' && <h2>Temario que dejó el ATP</h2>}
-        {activeStage && <Stage key={stageKey(activeStage)} stage={activeStage} disabled={disabled} onToggle={(id, hecho) => change(() => patch(id, hecho))} />}
+        {activeStage && <Stage key={stageKey(activeStage)} stage={activeStage} disabled={disabled} onToggle={(id, hecho) => change(() => patch(id, hecho))} onNotes={setNotesId} />}
         {loaded && !activeStage && <p>Aún no hay temas. Agrega una meta para comenzar.</p>}
         <nav className="stage-navigation" aria-label="Navegación entre etapas">
           <button type="button" disabled={disabled || activeIndex === 0} onClick={() => navigate(-1)}>← Anterior</button>
@@ -156,5 +159,7 @@ export default function App() {
         <button id="reset-no" type="button" hidden={!confirmReset} disabled={disabled} onClick={() => setConfirmReset(false)}>Cancelar</button>
       </div>
     </main>
+    {notesTema && <NotesEditor key={notesTema.id} tema={notesTema} temas={temas} onClose={() => setNotesId(null)} onSwitch={setNotesId}
+      onSaved={updated => setTemas(current => current.map(tema => tema.id === updated.id ? updated : tema))} />}
   </>;
 }

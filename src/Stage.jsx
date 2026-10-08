@@ -1,4 +1,4 @@
-export default function Stage({ stage, disabled, onToggle }) {
+export default function Stage({ stage, disabled, onToggle, onNotes }) {
   return <div className="stage">
     <div className="stage-head">
       {stage.grupo === 'ROUTE' && stage.orden < 999 && <span className="stage-num">{String(stage.orden).padStart(2, '0')}</span>}
@@ -14,6 +14,9 @@ export default function Stage({ stage, disabled, onToggle }) {
             <span className={`item-title${tema.mono ? ' mono' : ''}`}>{tema.titulo}</span>
           </span>
         </label>
+        <button className="notes-button" type="button" disabled={disabled} onClick={() => onNotes(tema.id)} aria-label={`Mis apuntes: ${tema.titulo}`}>
+          Mis apuntes{tema.apuntes?.trim() && <span className="notes-indicator" aria-label="Tiene apuntes"> ·</span>}
+        </button>
       </li>)}
     </ul>
   </div>;

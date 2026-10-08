@@ -27,6 +27,24 @@ test('API: CRUD, validación, concurrencia y persistencia', async t => {
   const tema = await created.json();
   assert.equal(tema.titulo, 'Redes');
   assert.equal(tema.hecho, false);
+  assert.equal(tema.apuntes ?? '', '');
+  for (const apuntes of [null, 123, {}, 'x'.repeat(20001)]) {
+    assert.equal((await request(`/api/temas/${tema.id}`, 'PATCH', { apuntes })).status, 400);
+  }
+  // Unicode astral y JSON escapado: hasta 240 KB para 20 000 caracteres.
+  const unicode = '📝'.repeat(20000);
+  const escaped = JSON.stringify({ apuntes: unicode }).replace(/[\uD800-\uDFFF]/g, char => `\\u${char.charCodeAt(0).toString(16)}`);
+  const unicodeResponse = await fetch(`${base}/api/temas/${tema.id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: escaped,
+  });
+  assert.equal(unicodeResponse.status, 200);
+  assert.equal((await unicodeResponse.json()).apuntes, unicode);
+  const notes = '# Título\n\n**Negrita**\n\n- Idea';
+  assert.equal((await request(`/api/temas/${tema.id}`, 'PATCH', { apuntes: notes })).status, 200);
+  const updatedNotes = await (await request('/api/temas')).json();
+  assert.deepEqual(updatedNotes[0], { ...tema, apuntes: notes });
+  assert.equal((await request(`/api/temas/${tema.id}`, 'PATCH', { apuntes: '' })).status, 200);
+  assert.equal(JSON.parse(await readFile(file, 'utf8'))[0].apuntes, '');
   assert.equal((await request(`/api/temas/${tema.id}`, 'PATCH', { hecho: 'true' })).status, 400);
   assert.equal((await request(`/api/temas/${tema.id}`, 'PATCH', { id: 'otro' })).status, 400);
   assert.equal((await request('/api/temas/inexistente', 'PATCH', { hecho: true })).status, 404);
