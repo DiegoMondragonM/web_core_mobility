@@ -17,7 +17,8 @@ function groupStages(temas) {
   for (const grupo of ['ROUTE', 'ATP']) {
     if (!stages.some(stage => stage.grupo === grupo)) stages.push({ grupo, etapa: grupo === 'ROUTE' ? 'Metas adicionales' : 'Después de la sesión del ATP', orden: 0, nota: '', mono: false, items: [] });
   }
-  return stages.sort((a, b) => a.orden - b.orden);
+  // La estructura original recorre ROUTE y después ATP; orden es local a cada grupo.
+  return stages.sort((a, b) => ['ROUTE', 'ATP'].indexOf(a.grupo) - ['ROUTE', 'ATP'].indexOf(b.grupo) || a.orden - b.orden);
 }
 const stageKey = stage => JSON.stringify([stage.grupo, stage.etapa]);
 
@@ -33,10 +34,30 @@ export default function App() {
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const mutation = useRef(false);
+  const [activeKey, setActiveKey] = useState('');
+  const stageContent = useRef(null);
+  const scrollPending = useRef(false);
   const stages = groupStages(temas);
+  const navigationStages = stages.filter(stage => stage.items.length);
+  const activeIndex = Math.max(0, navigationStages.findIndex(stage => stageKey(stage) === activeKey));
+  const activeStage = navigationStages[activeIndex];
   const selected = stages.find(stage => stageKey(stage) === destino) || stages[0];
   const disabled = loading || !loaded || busy;
   const done = temas.filter(tema => tema.hecho).length;
+
+  useEffect(() => {
+    if (!scrollPending.current) return;
+    scrollPending.current = false;
+    stageContent.current?.focus({ preventScroll: true });
+    stageContent.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [activeKey]);
+
+  function navigate(offset) {
+    const next = navigationStages[activeIndex + offset];
+    if (!next) return;
+    scrollPending.current = true;
+    setActiveKey(stageKey(next));
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,12 +109,10 @@ export default function App() {
       } finally { setConfirmReset(false); }
     });
   }
-  const stageList = grupo => stages.filter(stage => stage.grupo === grupo && stage.items.length).map(stage =>
-    <Stage key={stageKey(stage)} stage={stage} disabled={disabled} onToggle={(id, hecho) => change(() => patch(id, hecho))} />);
 
   return <>
     <Header />
-    <div className="wrap">
+    <main className="wrap">
       <div className="progress">
         <div className="progress-row"><span>Avance total</span><strong id="total-count">{done} de {temas.length} temas</strong></div>
         <div className="bar"><span id="total-bar" style={{ width: `${temas.length ? done / temas.length * 100 : 0}%` }} /></div>
@@ -101,15 +120,19 @@ export default function App() {
       <p id="estado" role="status">{loading ? 'Cargando temas…' : status}</p>
       <p id="error" role="alert">{error}</p>
       <StudyGoal />
-      <section>
-        <div className="sec-head"><h2>La ruta, etapa por etapa</h2><p>El orden importa: cada etapa se apoya en la anterior.</p></div>
-        <div id="route">{stageList('ROUTE')}</div>
+      <section className="stage-view" ref={stageContent} tabIndex={-1} aria-label="Etapa actual">
+        <div className="sec-head"><h2>La ruta, etapa por etapa</h2></div>
+        {activeStage?.grupo === 'ATP' && <h2>Temario que dejó el ATP</h2>}
+        {activeStage && <Stage key={stageKey(activeStage)} stage={activeStage} disabled={disabled} onToggle={(id, hecho) => change(() => patch(id, hecho))} />}
+        {loaded && !activeStage && <p>Aún no hay temas. Agrega una meta para comenzar.</p>}
+        <nav className="stage-navigation" aria-label="Navegación entre etapas">
+          <button type="button" disabled={disabled || activeIndex === 0} onClick={() => navigate(-1)}>← Anterior</button>
+          <span role="status">Etapa {activeStage ? activeIndex + 1 : 0} de {navigationStages.length}</span>
+          <button type="button" disabled={disabled || activeIndex >= navigationStages.length - 1} onClick={() => navigate(1)}>Siguiente etapa →</button>
+        </nav>
       </section>
+      <div className="support-grid">
       <NetworkMap />
-      <section>
-        <div className="sec-head"><h2>Temario que dejó el ATP</h2><p>Los diez temas a estudiar después de la revisión del ATP, con lo que se dijo de cada uno en la sesión.</p></div>
-        <div id="atp">{stageList('ATP')}</div>
-      </section>
       <Reflexes />
       <section>
         <h2>Nueva meta</h2>
@@ -125,12 +148,13 @@ export default function App() {
           <button type="submit" disabled={disabled}>Agregar meta</button>
         </form>
       </section>
+      </div>
       <div className="foot">
         <span>Tu avance se guarda en el servidor.</span>
         <button id="reset" type="button" hidden={confirmReset} disabled={disabled} onClick={() => setConfirmReset(true)}>Borrar avance</button>
         <button id="reset-yes" type="button" hidden={!confirmReset} disabled={disabled} onClick={resetProgress}>Sí, borrar todo</button>
         <button id="reset-no" type="button" hidden={!confirmReset} disabled={disabled} onClick={() => setConfirmReset(false)}>Cancelar</button>
       </div>
-    </div>
+    </main>
   </>;
 }

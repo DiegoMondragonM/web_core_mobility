@@ -15,6 +15,33 @@ El front se edita en `src/App.jsx`, `src/Stage.jsx`, `src/StudyContent.jsx` y `s
 
 ## Datos y API
 
+La interfaz muestra una etapa a la vez, primero ROUTE y después ATP, ordenadas por `orden` dentro de cada grupo. Los controles Anterior/Siguiente y el total de etapas se calculan con los datos cargados. El avance total incluye todos los temas. Las notas y descripciones se conservan en el JSON aunque no se muestran en las tarjetas. El diseño usa todo el ancho y organiza los temas en columnas adaptables.
+
+## Actualizar el servidor existente (Ubuntu)
+
+Sitio: https://rutacore.duckdns.org. Ejecutar como `ubuntu` después de subir los cambios al repositorio. Estos comandos actualizan `/home/ubuntu/mi-web` y reinician únicamente el proceso existente `web-core`. No se necesitan cambios de nginx ni nuevas rutas.
+
+```bash
+(
+  set -e
+  export NVM_DIR="$HOME/.nvm"
+  . "$NVM_DIR/nvm.sh"
+  nvm use 22
+  cd /home/ubuntu/mi-web
+  test -s /home/ubuntu/mi-web-data/temas.json
+  cp -p /home/ubuntu/mi-web-data/temas.json "/home/ubuntu/mi-web-data/temas.backup-$(date +%Y%m%d-%H%M%S).json"
+  git pull --ff-only
+  npm ci --include=dev
+  npm run build
+  node --test
+  DATA_FILE=/home/ubuntu/mi-web-data/temas.json pm2 restart web-core --update-env
+  pm2 save
+  pm2 status web-core
+)
+```
+
+Node 22 debe estar instalado con NVM y ser 22.12 o superior; `pm2` debe estar disponible con esa versión. Se conserva el puerto configurado en el proceso existente. No copiar `data/temas.json` del repositorio sobre `/home/ubuntu/mi-web-data/temas.json`. Después, abrir el dominio y comprobar el avance autenticándose normalmente. No se ha ejecutado este despliegue desde el entorno local.
+
 Migrados los 44 temas de `index (1).html`: 34 de ROUTE en siete etapas y 10 de ATP, todos con `hecho: false`. Se conservan IDs, descripciones, notas, orden y tipografía de las etapas. El front React conserva el diseño original, el mapa, los reflejos y el reinicio de avance. El archivo original queda como referencia.
 
 Formato actual de cada tema:
